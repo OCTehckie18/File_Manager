@@ -122,7 +122,7 @@ export function MessageBubble({ message }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
           <span style={{ fontSize: '12px', color: isUser ? '#6e8efb' : '#a78bfa', fontWeight: 600 }}>
-            {isUser ? 'You' : 'Nanobot'}
+            {isUser ? 'You' : 'Fol-Tree'}
           </span>
           <span style={{ fontSize: '10px', color: '#64748b' }}>{message.timestamp}</span>
           {isError && <Badge variant="error">Error</Badge>}

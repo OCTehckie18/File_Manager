@@ -1,16 +1,15 @@
 import { createContext, useContext, useReducer, useCallback } from 'react'
-import { scanFolderStream, getScannedData } from '../lib/api'
+import { scanFolderStream } from '../lib/api'
 
 // ── State Shape ────────────────────────────────────────
 const initialState = {
   page: 'landing',          // 'landing' | 'scanning' | 'workspace'
-  folderPath: '',           // display path (folder name)
-  directoryHandle: null,    // FileSystemDirectoryHandle from File System Access API
-  files: [],                // file tree from scan
-  skipped: [],              // password-protected files
+  folderPath: '',           // display path (typed by user)
+  files: [],                // file tree built from backend index
+  skipped: [],              // password-protected / unreadable files
   scanLogs: [],             // { message, progress, type }
   scanProgress: 0,
-  scanStatus: 'idle',       // 'idle' | 'scanning' | 'complete' | 'cancelled'
+  scanStatus: 'idle',       // 'idle' | 'scanning' | 'complete' | 'error' | 'cancelled'
   selectedFile: null,       // file node currently previewed
   sidebarOpen: true,
   sourcePanelOpen: true,
@@ -24,8 +23,6 @@ function reducer(state, action) {
       return { ...state, page: action.payload }
     case 'SET_FOLDER_PATH':
       return { ...state, folderPath: action.payload }
-    case 'SET_DIRECTORY_HANDLE':
-      return { ...state, directoryHandle: action.payload }
     case 'SET_FILES':
       return { ...state, files: action.payload }
     case 'SET_SKIPPED':
@@ -69,24 +66,31 @@ export function AppProvider({ children }) {
   }, [])
 
   /**
-   * Start a scan using the real FileSystemDirectoryHandle.
-   * Streams progress events through the scanner generator.
+   * Start a backend scan for the given folder path.
+   * Streams progress events from scanFolderStream() into the scan log.
+   *
+   * @param {string} folderPath  Absolute OS path string from user input
    */
-  const startScan = useCallback(async (dirHandle) => {
-    dispatch({ type: 'SET_DIRECTORY_HANDLE', payload: dirHandle })
-    dispatch({ type: 'SET_FOLDER_PATH', payload: dirHandle.name })
+  const startScan = useCallback(async (folderPath) => {
+    dispatch({ type: 'SET_FOLDER_PATH', payload: folderPath })
     dispatch({ type: 'CLEAR_SCAN' })
     dispatch({ type: 'SET_SCAN_STATUS', payload: 'scanning' })
     dispatch({ type: 'SET_PAGE', payload: 'scanning' })
 
+    let hadError = false
+
     try {
-      for await (const event of scanFolderStream(dirHandle)) {
+      for await (const event of scanFolderStream(folderPath)) {
         const msg = event.message || ''
         const isSkipped = msg.toLowerCase().includes('skipped') || msg.toLowerCase().includes('protecting')
         const isComplete = msg.toLowerCase().includes('complete')
         const isMuted = event.type === 'muted'
 
-        // Don't flood logs with "muted" events — still track progress
+        if (event.type === 'error') {
+          hadError = true
+        }
+
+        // Don't flood logs with muted events — still update progress silently
         if (!isMuted) {
           dispatch({
             type: 'ADD_SCAN_LOG',
@@ -98,13 +102,13 @@ export function AppProvider({ children }) {
             },
           })
         } else {
-          // Still update progress silently
           if (event.progress !== undefined) {
             dispatch({ type: 'SET_SCAN_PROGRESS', payload: event.progress })
           }
         }
       }
-      dispatch({ type: 'SET_SCAN_STATUS', payload: 'complete' })
+
+      dispatch({ type: 'SET_SCAN_STATUS', payload: hadError ? 'error' : 'complete' })
     } catch (err) {
       dispatch({
         type: 'ADD_SCAN_LOG',
@@ -114,7 +118,7 @@ export function AppProvider({ children }) {
     }
   }, [])
 
-  /** After scan completes, enter workspace with real file data */
+  /** After scan completes, enter workspace with file data from backend */
   const enterWorkspace = useCallback((files, skipped) => {
     dispatch({ type: 'SET_FILES', payload: files })
     dispatch({ type: 'SET_SKIPPED', payload: skipped })

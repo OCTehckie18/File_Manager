@@ -6,8 +6,8 @@ function LogIcon({ type }) {
   switch (type) {
     case 'warning': return <AlertTriangle size={12} color="#f59e0b" />
     case 'success': return <CheckCircle size={12} color="#22c55e" />
-    case 'error':   return <XCircle size={12} color="#ef4444" />
-    default:        return <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1e2330', display: 'inline-block', flexShrink: 0 }} />
+    case 'error': return <XCircle size={12} color="#ef4444" />
+    default: return <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1e2330', display: 'inline-block', flexShrink: 0 }} />
   }
 }
 
@@ -15,8 +15,8 @@ function LogColor(type) {
   switch (type) {
     case 'warning': return '#f59e0b'
     case 'success': return '#22c55e'
-    case 'error':   return '#ef4444'
-    default:        return '#94a3b8'
+    case 'error': return '#ef4444'
+    default: return '#94a3b8'
   }
 }
 
@@ -182,7 +182,7 @@ export function ScanningPage() {
             {['#ef4444', '#f59e0b', '#22c55e'].map(c => (
               <div key={c} style={{ width: '10px', height: '10px', borderRadius: '50%', background: c, opacity: 0.7 }} />
             ))}
-            <span style={{ marginLeft: '8px', fontSize: '11px', color: '#64748b' }}>nanobot — scan output</span>
+            <span style={{ marginLeft: '8px', fontSize: '11px', color: '#64748b' }}>fol-tree — scan output</span>
           </div>
 
           {/* Log entries */}
@@ -225,7 +225,7 @@ export function ScanningPage() {
             {isComplete && (
               <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Bot size={12} />
-                Nanobot is ready. Entering workspace…
+                Fol-Tree is ready. Entering workspace…
               </div>
             )}
           </div>

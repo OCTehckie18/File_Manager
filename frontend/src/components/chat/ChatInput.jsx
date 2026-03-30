@@ -63,7 +63,7 @@ export function ChatInput({ onSend, disabled = false }) {
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Nanobot anything about your files…"
+          placeholder="Ask Fol-Tree anything about your files…"
           disabled={disabled}
           rows={1}
           style={{
@@ -116,7 +116,7 @@ export function ChatInput({ onSend, disabled = false }) {
           ↵ Send  ·  ⇧↵ New line
         </span>
         <span style={{ fontSize: '10px', color: '#64748b' }}>
-          {disabled ? 'Nanobot is thinking…' : 'Powered by Nanobot AI'}
+          {disabled ? 'Fol-Tree is thinking…' : 'Powered by Fol-Tree AI'}
         </span>
       </div>
     </div>

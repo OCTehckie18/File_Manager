@@ -3,26 +3,28 @@ import { getScannedData } from '../lib/api'
 import { useApp } from '../context/AppContext'
 
 /**
- * useScanner — Orchestrates the full real scan flow.
- * Drives AppContext.startScan() (which runs the FS stream),
- * then calls getScannedData() to build the tree and enter workspace.
+ * useScanner — Orchestrates the full backend scan flow.
+ *
+ * 1. Calls AppContext.startScan(folderPath) which streams progress events
+ *    from scanFolderStream() into the scan log UI.
+ * 2. After streaming completes, calls getScannedData() (async, hits backend)
+ *    to build the file tree, then transitions to the workspace.
+ *
+ * @param {string} folderPath — absolute OS path typed by the user
  */
 export function useScanner() {
   const { startScan, enterWorkspace, scanStatus, dispatch } = useApp()
   const cancelRef = useRef(false)
 
-  /**
-   * @param {FileSystemDirectoryHandle} dirHandle  — from pickFolder()
-   */
-  const scan = useCallback(async (dirHandle) => {
+  const scan = useCallback(async (folderPath) => {
     cancelRef.current = false
 
-    // This streams progress into AppContext and waits until done
-    await startScan(dirHandle)
+    // Streams progress events into AppContext (drives ScanningPage UI)
+    await startScan(folderPath)
 
     if (!cancelRef.current) {
-      // Build tree + skipped list from the in-memory index
-      const { files, skipped } = getScannedData(dirHandle)
+      // Fetch the indexed file list from the backend and build a tree
+      const { files, skipped } = await getScannedData()
       enterWorkspace(files, skipped)
     }
   }, [startScan, enterWorkspace])

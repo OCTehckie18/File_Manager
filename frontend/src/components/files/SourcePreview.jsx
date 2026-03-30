@@ -22,7 +22,7 @@ export function SourcePreview({ sources }) {
         <FileText size={32} color="#1e2330" />
         <div>
           <div style={{ color: '#e2e8f0', marginBottom: '4px', fontSize: '13px' }}>No sources yet</div>
-          <div>Ask Nanobot a question to see referenced file passages here.</div>
+          <div>Ask Fol-Tree a question to see referenced file passages here.</div>
         </div>
       </div>
     )
@@ -48,7 +48,7 @@ function SourceCard({ source, index }) {
   const dir = parts.slice(0, -1).join('/')
 
   function handleCopy() {
-    navigator.clipboard.writeText(source.snippet || source.file).catch(() => {})
+    navigator.clipboard.writeText(source.snippet || source.file).catch(() => { })
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
