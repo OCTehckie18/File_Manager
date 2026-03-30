@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+nanobot
+httpx
+python-multipart
+pydantic-settings
+python-dotenv
+PyMuPDF          # for reading PDFs
+python-docx      # for reading .docx files
+openpyxl         # for reading .xlsx files
