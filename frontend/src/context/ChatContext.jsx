@@ -52,20 +52,28 @@ export function ChatProvider({ children }) {
     try {
       const response = await sendMessage(text)
       dispatch({ type: 'SET_THINKING', payload: false })
-      dispatch({
-        type: 'ADD_MESSAGE',
-        payload: {
-          id: uid(),
-          role: 'assistant',
-          content: response.answer,
-          sources: response.sources || [],
-          timestamp: formatTimestamp(new Date()),
-        },
-      })
+
+      // Only add assistant bubble when there's actual reply content
+      // (for confirm_delete we still want the confirmation question shown)
+      if (response.answer) {
+        dispatch({
+          type: 'ADD_MESSAGE',
+          payload: {
+            id: uid(),
+            role: 'assistant',
+            content: response.answer,
+            sources: response.sources || [],
+            timestamp: formatTimestamp(new Date()),
+          },
+        })
+      }
       dispatch({ type: 'SET_ACTIVE_SOURCES', payload: response.sources || [] })
+
+      // Return the full response so ChatPanel can handle action/target
       return response
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: err.message })
+      dispatch({ type: 'SET_THINKING', payload: false })
       dispatch({
         type: 'ADD_MESSAGE',
         payload: {
@@ -91,6 +99,7 @@ export function ChatProvider({ children }) {
 
   const value = {
     ...state,
+    dispatch,
     submitMessage,
     clearChat,
     setActiveSources,

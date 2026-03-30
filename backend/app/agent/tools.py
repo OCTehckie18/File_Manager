@@ -63,6 +63,29 @@ def get_file_stats(index: FolderIndex) -> str:
         f"By type: {ext_summary}"
     )
 
+def create_file(index: FolderIndex, name: str, is_folder: bool = False) -> dict:
+    base_dir = Path(index.base_folder).resolve()
+    target_path = (base_dir / name).resolve()
+
+    if not str(target_path).startswith(str(base_dir)):
+        return {"success": False, "reply": "Path must stay within the project directory."}
+
+    if target_path.exists():
+        kind = "Folder" if is_folder else "File"
+        return {"success": False, "reply": f"{kind} '{name}' already exists."}
+
+    try:
+        if is_folder:
+            target_path.mkdir(parents=True, exist_ok=True)
+        else:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.touch()
+        kind = "folder" if is_folder else "file"
+        return {"success": True, "reply": f"Successfully created {kind} '{name}'."}
+    except Exception as e:
+        return {"success": False, "reply": str(e)}
+
+
 def rename_file(index: FolderIndex, old_name: str, new_name: str) -> dict:
     base_dir = Path(index.base_folder).resolve()
     old_path = (base_dir / old_name).resolve()

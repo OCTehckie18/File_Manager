@@ -63,7 +63,7 @@ export function ChatInput({ onSend, disabled = false }) {
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Fol-Tree anything about your files…"
+          placeholder="Ask anything, or try: 'create file todo.txt', 'rename X to Y', 'delete Z'…"
           rows={1}
           autoFocus
           style={{

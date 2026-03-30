@@ -203,6 +203,22 @@ export async function deleteItem(filename) {
 }
 
 /**
+ * Renames a file via the agent /query endpoint.
+ * Equivalent to typing "rename <oldName> to <newName>" in chat.
+ */
+export async function renameItem(oldName, newName) {
+  return sendMessage(`rename "${oldName}" to "${newName}"`)
+}
+
+/**
+ * Moves a file to a destination folder via the agent /query endpoint.
+ * Equivalent to typing "move <filename> to <destination>" in chat.
+ */
+export async function moveItem(filename, destination) {
+  return sendMessage(`move "${filename}" to "${destination}"`)
+}
+
+/**
  * Check if the backend is reachable and healthy.
  * @returns {{ status: 'ready' | 'offline' }}
  */

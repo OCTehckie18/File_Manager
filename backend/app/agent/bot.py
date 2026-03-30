@@ -73,6 +73,28 @@ def detect_intent(message: str) -> dict:
                                "breakdown", "how many files", "types of files"]):
         return {"type": "stats"}
 
+    # Create file / folder
+    if any(w in msg for w in ["create", "make a", "make new", "touch", "mkdir", "add a", "add new"]):
+        is_folder = any(w in msg for w in ["folder", "directory", "dir"])
+        # Try to extract quoted name first
+        quoted = re.findall(r'["\']([^"\']+)["\']', message)
+        if quoted:
+            return {"type": "create", "name": quoted[0], "is_folder": is_folder}
+        # pattern: create/make/new <thing> called/named <name>
+        named_match = re.search(r'(?:called|named)\s+([\w.\- ]+)', message, re.IGNORECASE)
+        if named_match:
+            return {"type": "create", "name": named_match.group(1).strip(), "is_folder": is_folder}
+        # fallback: last word-like token with an extension or after folder keyword
+        if is_folder:
+            folder_match = re.search(r'(?:folder|directory|dir)\s+([\w.\-]+)', message, re.IGNORECASE)
+            if folder_match:
+                return {"type": "create", "name": folder_match.group(1).strip(), "is_folder": True}
+        else:
+            ext_match = re.findall(r'\b[\w\-]+\.(?:txt|py|js|ts|md|json|csv|html|css|sh)\b', message, re.IGNORECASE)
+            if ext_match:
+                return {"type": "create", "name": ext_match[-1], "is_folder": False}
+        return {"type": "create", "name": None, "is_folder": is_folder}
+
     # Delete
     if "delete" in msg or "remove" in msg:
         quoted = re.findall(r'["\']([^"\']+)["\']', message)
@@ -163,6 +185,18 @@ def ask_agent(index: FolderIndex, user_message: str):
             
     if intent["type"] == "move":
         res = tools.move_file(index, intent["filename"], intent["destination"])
+        if res["success"]:
+            return {"reply": res["reply"], "action": "reindex"}
+        else:
+            return res["reply"]
+
+    if intent["type"] == "create":
+        name = intent.get("name")
+        is_folder = intent.get("is_folder", False)
+        if not name:
+            kind = "folder" if is_folder else "file"
+            return f"Please specify the name of the {kind} you want to create."
+        res = tools.create_file(index, name, is_folder)
         if res["success"]:
             return {"reply": res["reply"], "action": "reindex"}
         else:

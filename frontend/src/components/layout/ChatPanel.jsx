@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Bot, Trash2, Sparkles } from 'lucide-react'
 import { MessageBubble } from '../chat/MessageBubble'
 import { ChatInput } from '../chat/ChatInput'
@@ -8,9 +8,10 @@ import { useChatActions } from '../../hooks/useChat'
 import { useApp } from '../../context/AppContext'
 import { ConfirmDeleteModal } from '../ui/ConfirmDeleteModal'
 import { deleteItem } from '../../lib/api'
+import { uid, formatTimestamp } from '../../lib/utils'
 
 export function ChatPanel() {
-  const { messages, isThinking, clearChat } = useChat()
+  const { messages, isThinking, clearChat, dispatch } = useChat()
   const { send } = useChatActions()
   const { refreshWorkspace } = useApp()
   const bottomRef = useRef(null)
@@ -21,13 +22,28 @@ export function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isThinking])
 
+  // Inject a bot message directly into chat (for post-action feedback)
+  const addBotMessage = useCallback((content, isError = false) => {
+    dispatch({
+      type: 'ADD_MESSAGE',
+      payload: {
+        id: uid(),
+        role: 'assistant',
+        content,
+        sources: [],
+        timestamp: formatTimestamp(new Date()),
+        isError,
+      },
+    })
+  }, [dispatch])
+
   const handleSend = async (text) => {
-      const res = await send(text)
-      if (res?.action === 'confirm_delete') {
-          setDeleteTarget(res.target)
-      } else if (res?.action === 'reindex') {
-          refreshWorkspace()
-      }
+    const res = await send(text)
+    if (res?.action === 'confirm_delete') {
+      setDeleteTarget(res.target)
+    } else if (res?.action === 'reindex') {
+      refreshWorkspace()
+    }
   }
 
   return (
@@ -116,7 +132,7 @@ export function ChatPanel() {
         }}
       >
         {messages.length === 0 ? (
-          <EmptyState />
+          <EmptyState onChipClick={handleSend} />
         ) : (
           messages.map(msg => (
             <MessageBubble key={msg.id} message={msg} />
@@ -129,27 +145,40 @@ export function ChatPanel() {
       {/* Input */}
       <ChatInput onSend={handleSend} disabled={isThinking} />
 
-      {/* Delete Modal */}
+      {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <ConfirmDeleteModal 
-            target={deleteTarget} 
-            onClose={() => setDeleteTarget(null)} 
-            onConfirm={async () => {
-                try {
-                    await deleteItem(deleteTarget)
-                    setDeleteTarget(null)
-                    refreshWorkspace() // update the file tree
-                } catch(e) {
-                    alert(e.message)
-                }
-            }} 
+        <ConfirmDeleteModal
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            try {
+              await deleteItem(deleteTarget)
+              setDeleteTarget(null)
+              refreshWorkspace()
+              addBotMessage(`✅ Deleted \`${deleteTarget}\` successfully.`)
+            } catch (e) {
+              setDeleteTarget(null)
+              addBotMessage(`❌ Failed to delete \`${deleteTarget}\`: ${e.message}`, true)
+            }
+          }}
         />
       )}
     </div>
   )
 }
 
-function EmptyState() {
+const EXAMPLE_PROMPTS = [
+  { label: '📂 List all files', text: 'List all files in this folder' },
+  { label: '🔍 Search content', text: 'Find files containing "TODO"' },
+  { label: '📊 Folder stats', text: 'Give me a summary of this folder' },
+  { label: '✏️ Rename a file', text: 'Rename notes.txt to notes_backup.txt' },
+  { label: '🗂️ Move a file', text: 'Move report.pdf to archive' },
+  { label: '📄 Create a file', text: 'Create a file called todo.txt' },
+  { label: '📁 Create a folder', text: 'Create a folder called backup' },
+  { label: '🗑️ Delete a file', text: 'Delete old_draft.txt' },
+]
+
+function EmptyState({ onChipClick }) {
   return (
     <div
       className="animate-fade-in"
@@ -184,33 +213,57 @@ function EmptyState() {
         <div style={{ fontSize: '15px', color: '#e2e8f0', fontWeight: 600, marginBottom: '6px' }}>
           Ask Fol-Tree anything
         </div>
-        <div style={{ maxWidth: '300px' }}>
-          Search your files, summarize documents, find code patterns, or just explore what's in your folder.
+        <div style={{ maxWidth: '340px', lineHeight: 1.6 }}>
+          Search, summarize, rename, move, create, or delete — just type a command or click a suggestion below.
         </div>
       </div>
 
-      {/* Example prompts */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px', width: '100%', maxWidth: '360px' }}>
-        {[
-          'What documents are in this folder?',
-          'Summarize the README file',
-          'Find all Python files',
-        ].map((prompt, i) => (
-          <div
+      {/* Clickable example prompt chips */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '6px',
+          marginTop: '8px',
+          width: '100%',
+          maxWidth: '420px',
+        }}
+      >
+        {EXAMPLE_PROMPTS.map((p, i) => (
+          <button
             key={i}
+            id={`prompt-chip-${i}`}
+            onClick={() => onChipClick(p.text)}
             style={{
               padding: '8px 12px',
               background: '#141720',
               border: '1px solid #1e2330',
               borderRadius: '6px',
-              fontSize: '12px',
+              fontSize: '11px',
               color: '#94a3b8',
-              cursor: 'default',
+              cursor: 'pointer',
+              textAlign: 'left',
+              fontFamily: "'JetBrains Mono', monospace",
+              transition: 'all 0.18s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = '#6e8efb'
+              e.currentTarget.style.color = '#c4b5fd'
+              e.currentTarget.style.background = 'rgba(110,142,251,0.07)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = '#1e2330'
+              e.currentTarget.style.color = '#94a3b8'
+              e.currentTarget.style.background = '#141720'
             }}
           >
-            "{prompt}"
-          </div>
+            {p.label}
+          </button>
         ))}
+      </div>
+
+      <div style={{ fontSize: '10px', color: '#374151', marginTop: '4px' }}>
+        Click a suggestion or type your own command
       </div>
     </div>
   )
