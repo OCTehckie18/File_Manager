@@ -1,81 +1,123 @@
 import httpx
-import json
+import re
 from app.indexer.indexer import FolderIndex
 from app.core.config import settings
 from app.agent import tools
 
-SYSTEM_PROMPT = """
-You are a file manager assistant. You have been given full access to a specific folder.
-You know everything about the files in that folder — their names, sizes, types, and contents.
 
-When the user asks a question, use the provided tool results to answer accurately.
-Be concise and helpful. Always refer to actual file names in your answers.
-Never make up file names or contents.
-""".strip()
+def detect_intent(message: str) -> dict:
+    msg = message.lower()
 
-TOOLS_DESCRIPTION = """
-You have access to the following tools. When you need information, call the appropriate tool by responding with JSON in this format:
-{"tool": "<tool_name>", "args": {<args>}}
+    # Size query
+    if any(w in msg for w in ["above", "larger", "bigger", "more than", "greater", "exceed", "over"]):
+        nums = re.findall(r'\d+\.?\d*', msg)
+        size = float(nums[0]) if nums else 1.0
+        return {"type": "size", "size_mb": size}
 
-Available tools:
-- list_files: Lists all files with sizes. No args needed.
-- files_above_size: Lists files above a certain size. Args: {"size_mb": <number>}
-- search_content: Searches all file contents for a keyword. Args: {"keyword": "<string>"}
-- get_file_content: Returns content of a specific file. Args: {"filename": "<string>"}
-- get_file_stats: Returns overall folder stats. No args needed.
+    # Content search
+    if any(w in msg for w in ["find", "search", "contain", "which file has", "look for",
+                               "word", "phrase", "sentence", "inside", "includes"]):
+        # Extract keyword after common phrases
+        for phrase in ["find files with", "find file with", "which file has", "which files have",
+                       "which files contain", "search for", "look for", "containing",
+                       "files with the word", "file with the word", "files that have",
+                       "files that contain", "find the word", "find word"]:
+            if phrase in msg:
+                keyword = message[msg.index(phrase) + len(phrase):].strip().strip('"\'?.')
+                return {"type": "search", "keyword": keyword}
+        # Fallback — last meaningful word
+        words = [w for w in message.split() if len(w) > 3]
+        keyword = words[-1].strip('?"\'.,') if words else message
+        return {"type": "search", "keyword": keyword}
 
-If no tool is needed, just reply normally.
-""".strip()
+    # Read specific file
+    if any(w in msg for w in ["read", "open", "show content", "content of", "what is in", "what's in"]):
+        quoted = re.findall(r'["\']([^"\']+)["\']', message)
+        if quoted:
+            return {"type": "read", "filename": quoted[0]}
+        ext_match = re.findall(
+            r'\b[\w\-. ]+\.(?:txt|pdf|docx|xlsx|csv|md|json|py|js|html)\b',
+            message, re.IGNORECASE
+        )
+        if ext_match:
+            return {"type": "read", "filename": ext_match[0]}
+        return {"type": "read", "filename": None}
+
+    # Stats
+    if any(w in msg for w in ["stats", "summary", "overview", "total size",
+                               "breakdown", "how many files", "types of files"]):
+        return {"type": "stats"}
+
+    # Default — list
+    return {"type": "list"}
 
 
-def run_tool(index: FolderIndex, tool_name: str, args: dict) -> str:
-    if tool_name == "list_files":
-        return tools.list_files(index)
-    elif tool_name == "files_above_size":
-        return tools.files_above_size(index, args.get("size_mb", 1))
-    elif tool_name == "search_content":
-        return tools.search_content(index, args.get("keyword", ""))
-    elif tool_name == "get_file_content":
-        return tools.get_file_content(index, args.get("filename", ""))
-    elif tool_name == "get_file_stats":
+def run_tool(index: FolderIndex, intent: dict) -> str:
+    itype = intent["type"]
+
+    if itype == "size":
+        return tools.files_above_size(index, intent["size_mb"])
+    elif itype == "search":
+        return tools.search_content(index, intent["keyword"])
+    elif itype == "read":
+        if intent.get("filename"):
+            return tools.get_file_content(index, intent["filename"])
+        return "Please specify the filename you want to read."
+    elif itype == "stats":
         return tools.get_file_stats(index)
     else:
-        return f"Unknown tool: {tool_name}"
+        return tools.list_files(index)
 
 
-def call_ollama(messages: list[dict]) -> str:
-    response = httpx.post(
-        f"{settings.ollama_base_url}/api/chat",
-        json={
-            "model": settings.ollama_model,
-            "messages": messages,
-            "stream": False
-        },
-        timeout=120
-    )
-    response.raise_for_status()
-    return response.json()["message"]["content"]
+def call_ollama(system: str, user_message: str) -> str:
+    try:
+        response = httpx.post(
+            f"{settings.ollama_base_url}/api/chat",
+            json={
+                "model": settings.ollama_model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_message}
+                ],
+                "stream": False
+            },
+            timeout=180
+        )
+        response.raise_for_status()
+        return response.json()["message"]["content"]
+    except httpx.ConnectError:
+        return "ERROR: Cannot connect to Ollama. Make sure 'ollama serve' is running."
+    except httpx.TimeoutException:
+        return "ERROR: Ollama timed out. Try a faster model like mistral."
+    except Exception as e:
+        return f"ERROR: {str(e)}"
 
 
 def ask_agent(index: FolderIndex, user_message: str) -> str:
-    messages = [
-        {"role": "system", "content": f"{SYSTEM_PROMPT}\n\n{TOOLS_DESCRIPTION}"},
-        {"role": "user", "content": user_message}
-    ]
+    # Step 1 — detect what user wants
+    intent = detect_intent(user_message)
 
-    # First LLM call — may request a tool
-    reply = call_ollama(messages)
+    # Step 2 — run tool in Python, get REAL data
+    tool_result = run_tool(index, intent)
 
-    # Check if LLM wants to use a tool
-    try:
-        parsed = json.loads(reply.strip())
-        if "tool" in parsed:
-            tool_result = run_tool(index, parsed["tool"], parsed.get("args", {}))
-            # Send tool result back and get final answer
-            messages.append({"role": "assistant", "content": reply})
-            messages.append({"role": "user", "content": f"Tool result:\n{tool_result}"})
-            reply = call_ollama(messages)
-    except (json.JSONDecodeError, TypeError):
-        pass  # LLM answered directly without a tool call
+    # Step 3 — for list/size/stats queries, skip LLM entirely
+    # These are factual — just return the real data directly
+    if intent["type"] in ["list", "size", "stats"]:
+        return tool_result
 
-    return reply
+    # Step 4 — for search and read, use LLM only to format the answer
+    # but strictly constrained to the tool result
+    system = """You are a file manager assistant.
+The user asked about files in their folder.
+The ACTUAL result from searching the real folder is given below.
+Reply using ONLY this information. Do not add any filenames or content not present below.
+Keep your answer short and direct."""
+
+    prompt = f"""User asked: {user_message}
+
+Real result from the folder:
+{tool_result}
+
+Answer the user using only the above data."""
+
+    return call_ollama(system, prompt)

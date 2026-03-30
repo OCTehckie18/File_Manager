@@ -4,6 +4,7 @@ from app.indexer.indexer import build_index
 from app.core.session import set_index, get_index
 from app.agent.bot import ask_agent
 import os
+import traceback
 
 router = APIRouter()
 
@@ -27,10 +28,35 @@ def index_status(session_id: str):
         folder=index.base_folder
     )
 
+@router.get("/debug-index/{session_id}")
+def debug_index(session_id: str):
+    index = get_index(session_id)
+    if not index:
+        return {"error": "No index found for this session"}
+    return {
+        "folder": index.base_folder,
+        "total_files": index.total_files,
+        "files": [
+            {
+                "name": f.name,
+                "size_kb": round(f.size_bytes / 1024, 2),
+                "has_content": f.content is not None
+            }
+            for f in index.files
+        ]
+    }
+
 @router.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest):
-    index = get_index(req.session_id)
-    if not index:
-        return QueryResponse(reply="", error="No folder set for this session. Please set a folder first.")
-    reply = ask_agent(index, req.message)
-    return QueryResponse(reply=reply)
+    try:
+        index = get_index(req.session_id)
+        if not index:
+            return QueryResponse(
+                reply="",
+                error="No folder set for this session. Please call /set-folder first."
+            )
+        reply = ask_agent(index, req.message)
+        return QueryResponse(reply=reply)
+    except Exception as e:
+        traceback.print_exc()
+        return QueryResponse(reply="", error=str(e))
