@@ -1,4 +1,4 @@
-# Nanobot — Frontend
+# Fol-Tree — Frontend
 
 > AI-powered local folder intelligence. Index any folder on your machine, then search and explore its contents through a chat interface — entirely in your browser, zero uploads.
 
@@ -96,7 +96,7 @@ Native OS folder picker (dashed-border button → `showDirectoryPicker()`). Show
 | Panel | Description |
 |---|---|
 | **Left — Sidebar** | Collapsible file tree. Real-time filter search. Type-coloured icons. ⚠ badge on password-protected files. File sizes. |
-| **Centre — Chat** | Message thread with Nanobot avatar. Markdown rendering (bold, inline code, fenced code blocks). Auto-scroll. Source citation button. Auto-growing textarea. |
+| **Centre — Chat** | Message thread with Fol-Tree avatar. Markdown rendering (bold, inline code, fenced code blocks). Auto-scroll. Source citation button. Auto-growing textarea. |
 | **Right — Sources** | Cited file passages from the last response. File path + line number badge + copy button. Collapses to icon rail. |
 
 Settings drawer (gear icon): change/re-scan folder, view skipped files list.
@@ -140,7 +140,7 @@ server: {
 | `--color-surface` | `#141720` | Cards, panels |
 | `--color-border` | `#1e2330` | Dividers, borders |
 | `--color-accent` | `#6e8efb` | Primary actions, highlights |
-| `--color-accent-alt` | `#a78bfa` | Nanobot avatar, gradients |
+| `--color-accent-alt` | `#a78bfa` | Fol-Tree avatar, gradients |
 | `--color-warning` | `#f59e0b` | Skipped/protected files |
 | `--color-error` | `#ef4444` | Error states |
 | `--color-success` | `#22c55e` | Completion states |

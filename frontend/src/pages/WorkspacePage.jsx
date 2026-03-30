@@ -168,7 +168,7 @@ function SettingsDrawer({ onClose }) {
             >
               <div style={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Bot size={13} color="#6e8efb" />
-                Nanobot v1.0.0
+                Fol-Tree v1.0.0
               </div>
               Local AI folder intelligence. All data stays on your machine.
               No uploads. No cloud. Just you and your files.
@@ -216,7 +216,7 @@ export function WorkspacePage() {
                 backgroundClip: 'text',
               }}
             >
-              Nanobot
+              Fol-Tree
             </span>
           </div>
 

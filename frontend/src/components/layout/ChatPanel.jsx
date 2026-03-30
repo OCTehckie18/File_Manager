@@ -53,7 +53,7 @@ export function ChatPanel() {
           <Bot size={16} color="#a78bfa" />
         </div>
         <div>
-          <div style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 600 }}>Nanobot</div>
+          <div style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 600 }}>Fol-Tree</div>
           <div style={{ fontSize: '10px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
             Ready
@@ -151,7 +151,7 @@ function EmptyState() {
       </div>
       <div>
         <div style={{ fontSize: '15px', color: '#e2e8f0', fontWeight: 600, marginBottom: '6px' }}>
-          Ask Nanobot anything
+          Ask Fol-Tree anything
         </div>
         <div style={{ maxWidth: '300px' }}>
           Search your files, summarize documents, find code patterns, or just explore what's in your folder.

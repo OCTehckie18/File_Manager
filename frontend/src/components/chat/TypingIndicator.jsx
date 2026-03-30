@@ -32,7 +32,7 @@ export function TypingIndicator() {
 
       {/* Bubble */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span style={{ fontSize: '12px', color: '#a78bfa', fontWeight: 600 }}>Nanobot</span>
+        <span style={{ fontSize: '12px', color: '#a78bfa', fontWeight: 600 }}>Fol-Tree</span>
         <div
           style={{
             display: 'inline-flex',

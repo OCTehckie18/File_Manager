@@ -1,39 +1,28 @@
 import React, { useState } from 'react'
-import { FolderOpen, Zap, AlertTriangle, ArrowRight, Bot, FolderSearch } from 'lucide-react'
+import { FolderOpen, Zap, AlertTriangle, ArrowRight, Bot } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { useScanner } from '../hooks/useScanner'
-import { pickFolder } from '../lib/api'
 
 export function LandingPage() {
-  const [selectedHandle, setSelectedHandle] = useState(null)
+  const [folderPath, setFolderPath] = useState('')
   const [error, setError] = useState('')
-  const [picking, setPicking] = useState(false)
   const { scan } = useScanner()
 
-  async function handlePickFolder() {
-    setError('')
-    setPicking(true)
-    try {
-      const handle = await pickFolder()
-      setSelectedHandle(handle)
-    } catch (err) {
-      // User cancelled the picker — not an error
-      if (err.name !== 'AbortError') {
-        setError(err.message)
-      }
-    } finally {
-      setPicking(false)
-    }
-  }
-
   async function handleScan() {
-    if (!selectedHandle) {
-      setError('Please select a folder first.')
+    const trimmed = folderPath.trim()
+    if (!trimmed) {
+      setError('Please enter a folder path.')
       return
     }
     setError('')
-    await scan(selectedHandle)
+    await scan(trimmed)
   }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') handleScan()
+  }
+
+  const hasPath = folderPath.trim().length > 0
 
   return (
     <div
@@ -83,7 +72,7 @@ export function LandingPage() {
           position: 'relative',
           zIndex: 1,
           width: '100%',
-          maxWidth: '540px',
+          maxWidth: '560px',
           padding: '0 24px',
           display: 'flex',
           flexDirection: 'column',
@@ -121,7 +110,7 @@ export function LandingPage() {
                   backgroundClip: 'text',
                 }}
               >
-                Nanobot
+                Fol-Tree
               </span>
             </h1>
             <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#64748b' }}>
@@ -144,69 +133,65 @@ export function LandingPage() {
           }}
         >
           <div style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Choose a folder to index
+            Enter the folder path to index
           </div>
 
-          {/* Folder picker button */}
-          <button
-            id="pick-folder-btn"
-            onClick={handlePickFolder}
-            disabled={picking}
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '14px 16px',
-              background: selectedHandle ? 'rgba(110,142,251,0.08)' : '#0d0f14',
-              border: `1px dashed ${selectedHandle ? '#6e8efb' : '#252d40'}`,
-              borderRadius: '8px',
-              cursor: picking ? 'wait' : 'pointer',
-              transition: 'all 0.2s',
-              width: '100%',
-              textAlign: 'left',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = '#6e8efb'
-              e.currentTarget.style.background = 'rgba(110,142,251,0.08)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = selectedHandle ? '#6e8efb' : '#252d40'
-              e.currentTarget.style.background = selectedHandle ? 'rgba(110,142,251,0.08)' : '#0d0f14'
-            }}
-          >
-            {selectedHandle ? (
-              <FolderOpen size={20} color="#6e8efb" />
-            ) : (
-              <FolderSearch size={20} color="#64748b" />
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {selectedHandle ? (
-                <>
-                  <div style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedHandle.name}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6e8efb', marginTop: '2px' }}>
-                    Click to change folder
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize: '13px', color: '#64748b' }}>
-                    {picking ? 'Opening folder picker…' : 'Click to browse and select a folder'}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#64748b', opacity: 0.6, marginTop: '2px' }}>
-                    Uses your OS's native folder picker — no uploads
-                  </div>
-                </>
-              )}
+          {/* Path input */}
+          <div style={{ position: 'relative' }}>
+            <div
+              style={{
+                position: 'absolute',
+                left: '14px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <FolderOpen size={16} color={hasPath ? '#6e8efb' : '#3d4a63'} />
             </div>
-            {selectedHandle && (
-              <span style={{ fontSize: '10px', color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '4px', padding: '2px 6px', flexShrink: 0 }}>
-                ✓ Selected
-              </span>
-            )}
-          </button>
+            <input
+              id="folder-path-input"
+              type="text"
+              value={folderPath}
+              onChange={e => { setFolderPath(e.target.value); setError('') }}
+              onKeyDown={handleKeyDown}
+              placeholder="C:\Users\YourName\Projects\MyFolder"
+              spellCheck={false}
+              autoComplete="off"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '13px',
+                padding: '13px 14px 13px 40px',
+                background: '#0d0f14',
+                border: `1px solid ${hasPath ? '#6e8efb' : '#252d40'}`,
+                borderRadius: '8px',
+                color: '#e2e8f0',
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                boxShadow: hasPath ? '0 0 0 3px rgba(110,142,251,0.08)' : 'none',
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = '#6e8efb'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(110,142,251,0.08)'
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = hasPath ? '#6e8efb' : '#252d40'
+                e.currentTarget.style.boxShadow = hasPath ? '0 0 0 3px rgba(110,142,251,0.08)' : 'none'
+              }}
+            />
+          </div>
+
+          {/* Helper hint */}
+          <div style={{ fontSize: '11px', color: '#3d4a63', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>💡</span>
+            <span>
+              Copy the path from your file manager's address bar and paste it above.
+            </span>
+          </div>
 
           {/* Error message */}
           {error && (
@@ -220,7 +205,7 @@ export function LandingPage() {
           <Button
             id="start-scan-btn"
             size="lg"
-            disabled={!selectedHandle}
+            disabled={!hasPath}
             onClick={handleScan}
             style={{ width: '100%', justifyContent: 'center' }}
           >
@@ -243,19 +228,21 @@ export function LandingPage() {
             fontSize: '11px',
             color: '#94a3b8',
             lineHeight: 1.6,
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
           <AlertTriangle size={14} color="#f59e0b" style={{ flexShrink: 0, marginTop: '1px' }} />
           <span>
             <strong style={{ color: '#f59e0b' }}>Note:</strong>{' '}
-            Password-protected and binary files will be detected and skipped automatically.
-            Your browser reads files locally — nothing is uploaded or sent anywhere.
+            The backend server must be running on <code style={{ color: '#6e8efb', background: 'rgba(110,142,251,0.1)', padding: '1px 5px', borderRadius: '3px' }}>localhost:8000</code>.
+            Binary files and password-protected documents are automatically skipped.
           </span>
         </div>
 
         {/* Feature pills */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {['Local-only', 'Text search', 'Source citations', 'No uploads'].map(feat => (
+          {['Backend-powered', 'PDF & DOCX', 'AI chat', 'Local LLM'].map(feat => (
             <span
               key={feat}
               style={{
